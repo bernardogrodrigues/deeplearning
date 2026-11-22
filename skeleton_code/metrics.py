@@ -13,7 +13,7 @@ from collections import Counter
 
 import torch
 
-from load_data import CLASSES
+from deeplearning.skeleton_code.load_data import CLASSES
 
 
 # ----------------------------------------------------------------------------- classification
