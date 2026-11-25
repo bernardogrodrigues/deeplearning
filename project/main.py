@@ -25,3 +25,5 @@ for split in data:
         print(f"\nNormalization statistics (training set):")
         print(f"Channel mean: {mean}")
         print(f"Channel std: {std}")
+
+print (data["train"]["images"])
