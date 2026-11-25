@@ -27,3 +27,10 @@ for split in data:
         print(f"Channel std: {std}")
 
 print (data["train"]["images"])
+
+# Normalization
+
+train_loader, val_loader, test_loader = image_loaders(data, batch_size=64, mean=mean, std=std)
+
+for images, labels in train_loader:                        # (B, 3, 64, 64) float, (B,) long
+    print(images)
