@@ -7,26 +7,8 @@ from torch.utils.data import DataLoader
 from load_data import CLASSES, load_coco_dominant10
 from data import channel_stats, image_loaders
 from train import train, get_device, set_seed
-
-class MLP(nn.Module):
-    def __init__(self, dim_layers):
-        super(MLP, self).__init__()
-
-        # define layers
-        layers = []
-        for d in range(len(dim_layers) - 1):
-            layers.append(nn.Linear(dim_layers[d], dim_layers[d+1]))
-        self.layers = nn.ModuleList(layers)
-
-    def forward(self, X):
-        X = X.reshape(X.shape[0], -1)   # [B, 3, 64, 64] -> [B, 12288]
-
-        for i, layer in enumerate(self.layers):
-            X = layer(X)
-            if i < len(self.layers) - 1:
-                X = F.relu(X)
-
-        return F.log_softmax(X, dim=1)
+from models import MLP
+from utils import test_score_fn, plot_history
 
 data = load_coco_dominant10()
 
@@ -52,9 +34,7 @@ for split in data:
 # print (data["train"]["images"])
 
 # Normalization
-
 train_loader, val_loader, test_loader = image_loaders(data, batch_size=64, mean=mean, std=std)
-
 
 # Train the model
 set_seed(0)
@@ -63,6 +43,9 @@ mlp_0d = MLP(dim_layers=[64*64*3, 10]) #where 0d stands for 0 hidden layers
 optimizer = torch.optim.SGD(
     mlp_0d.parameters(),
     lr=0.01)
+
+# Check what device is being used (CPU or GPU)
+print(get_device())
 
 criterion = nn.NLLLoss()
 
@@ -85,40 +68,13 @@ def val_score_fn(model):
 
     return accuracy
 
-def test_score_fn(model):
-    model.eval()
-    correct = 0
-    total = 0
-    with torch.no_grad():
-        for images, labels in test_loader:
-            predictions = model(images)
-            predicted_labels = torch.argmax(predictions, dim=1)
-            correct += (predicted_labels == labels).sum().item()
-            total += labels.size(0)
-    accuracy = correct / total
-    return accuracy
-
-# Check what device is being used (CPU or GPU)
-print(get_device())
-
 # Train the model
 history = train(mlp_0d, optimizer, loss_fn, train_loader, val_score_fn, epochs=20)
 
 # Plot the training loss and validation score
-fig, ax1 = plt.subplots(figsize=(8, 5))
-ax2 = ax1.twinx()
-
-ax1.plot(history['train_loss'], 'b-', label='Train loss')
-ax2.plot(history['val_score'], 'r-', label='Val score')
-
-ax1.set_xlabel('Epoch')
-ax1.set_ylabel('Training loss')
-ax2.set_ylabel('Validation score')
-ax2.set_ylim(0, 1)
-fig.legend(loc='center right', bbox_to_anchor=(0.9, 0.5))
-plt.show()
+plot_history(history)
 
 # Test accuracy of the best epoch model
-test_accuracy = test_score_fn(mlp_0d)
+test_accuracy = test_score_fn(mlp_0d, test_loader)
 print (f"Test accuracy: {test_accuracy:.4f}")
 
