@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -71,11 +72,25 @@ def loss_fn (model, batch): # batch is a tuple of (images, labels)
     return loss
 
 def val_score_fn(model):
+    correct = 0
+    total = 0
+
+    for images, labels in val_loader:
+        predictions = model(images)
+        predicted_labels = torch.argmax(predictions, dim=1)
+        correct += (predicted_labels == labels).sum().item()
+        total += labels.size(0)
+    
+    accuracy = correct / total
+
+    return accuracy
+
+def test_score_fn(model):
     model.eval()
     correct = 0
     total = 0
     with torch.no_grad():
-        for images, labels in val_loader:
+        for images, labels in test_loader:
             predictions = model(images)
             predicted_labels = torch.argmax(predictions, dim=1)
             correct += (predicted_labels == labels).sum().item()
@@ -83,7 +98,27 @@ def val_score_fn(model):
     accuracy = correct / total
     return accuracy
 
-# print(get_device())
+# Check what device is being used (CPU or GPU)
+print(get_device())
 
 # Train the model
-history = train(mlp_0d, optimizer, loss_fn, train_loader, val_score_fn, epochs=50)
+history = train(mlp_0d, optimizer, loss_fn, train_loader, val_score_fn, epochs=20)
+
+# Plot the training loss and validation score
+fig, ax1 = plt.subplots(figsize=(8, 5))
+ax2 = ax1.twinx()
+
+ax1.plot(history['train_loss'], 'b-', label='Train loss')
+ax2.plot(history['val_score'], 'r-', label='Val score')
+
+ax1.set_xlabel('Epoch')
+ax1.set_ylabel('Training loss')
+ax2.set_ylabel('Validation score')
+ax2.set_ylim(0, 1)
+fig.legend(loc='center right', bbox_to_anchor=(0.9, 0.5))
+plt.show()
+
+# Test accuracy of the best epoch model
+test_accuracy = test_score_fn(mlp_0d)
+print (f"Test accuracy: {test_accuracy:.4f}")
+
